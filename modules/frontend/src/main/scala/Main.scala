@@ -73,10 +73,12 @@ object App:
     reader.readAsText(file)
 
   def chartHistogram(data: Array[Int], kind: DataItemKind) =
-    val hist = Timed(s"$kind histogram"):
+    println(s"Crunching $kind data")
+
+    val hist = Timed(s"histogram"):
       histogram(data.toList)
 
-    Timed(s"$kind data add"):
+    Timed(s"data add"):
       addDataItem(DataItem(DataItemID(), kind, 0, 0))
       hist
         .foreach: (bucket, count) =>
@@ -92,8 +94,10 @@ object App:
   def histogram(allData: List[Int]): List[(Int, Int)] =
     @tailrec def getBucket(maxMicros: Int, accu: List[(Int, Int)], data: List[Int]): List[(Int, Int)] =
       data match
-        case _ if maxMicros > MaxFrametimeMicros => accu
-        case Nil                                 => accu
+        case data if maxMicros > MaxFrametimeMicros =>
+          println(s"Dropping frametimes, as they were more than 16ms: $data")
+          accu
+        case Nil => accu
         case data =>
           val (bucket, rest) = data.partition(_ < maxMicros)
           getBucket(maxMicros + BucketSizeMicros, accu :+ (maxMicros, bucket.size), rest)
