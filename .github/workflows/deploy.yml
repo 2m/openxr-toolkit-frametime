@@ -1,0 +1,51 @@
+name: deploy
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  actions: read
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+env:
+  JAVA_OPTS: -Xms2048M -Xmx2048M -Xss6M -XX:ReservedCodeCacheSize=256M -Dfile.encoding=UTF-8
+
+jobs:
+  deploy:
+
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: extractions/setup-just@v2
+
+    # frontend
+    - uses: actions/configure-pages@v5
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 18
+        cache: npm
+        cache-dependency-path: modules/frontend
+
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: 17
+        cache: sbt
+    - uses: sbt/setup-sbt@v1
+
+    - run: just install
+    - run: just build-scala-js
+    - run: just build-js
+
+    - uses: actions/upload-pages-artifact@v3
+      with:
+        path: 'modules/frontend/dist'
+    - uses: actions/deploy-pages@v4
