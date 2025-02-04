@@ -27,9 +27,20 @@ import org.scalajs.dom
 import org.scalajs.dom.File
 import org.scalajs.dom.FileReader
 import org.scalajs.dom.HTMLInputElement
+import oxrt.frametimes.vendor.chartjs.*
 
 @main
 def main() =
+  Chart.register(
+    ChartAnnotationPlugin,
+    Legend,
+    LineController,
+    LineElement,
+    PointElement,
+    CategoryScale,
+    LinearScale,
+    Tooltip
+  )
   renderOnDomContentLoaded(dom.document.querySelector("#app"), App.app)
 
 object App:
@@ -104,65 +115,95 @@ object App:
 
     getBucket(BucketSizeMicros, Nil, allData)
 
-  val chartConfig =
-    import typings.chartJs.mod.*
+  type ChartDataType = js.Array[js.Object]
+  type ChartLabelType = String
 
-    new ChartConfiguration:
-      `type` = ChartType.line
-      data = new ChartData:
+  val chartConfig =
+    import typings.chartJs.chartJsStrings
+    import typings.chartJs.distTypesIndexMod.*
+
+    def dataset[T](
+        datasetLabel: String,
+        color: String,
+        datasetHidden: Boolean = false
+    ): ChartDataset[T, ChartDataType] =
+      new js.Object:
+        val label = datasetLabel
+        val hidden = datasetHidden
+        val borderWidth = 1
+        val borderColor = color
+        val backgroundColor = color
+        val fill = false
+      .asInstanceOf[ChartDataset[T, ChartDataType]]
+
+    def options[T](): ChartOptions[T] =
+      new js.Object:
+        val scales = new js.Object:
+          val y = new js.Object:
+            val title = new js.Object:
+              val display = true
+              val text = "Percentage of all measurements"
+            val beginAtZero = true
+          val x = new js.Object:
+            val title = new js.Object:
+              val display = true
+              val text = "Frametime in milliseconds"
+            val ticks = new js.Object:
+              val maxTicksLimit = MaxFrametimeMicros / 1000.0 + 1
+        val elements = new js.Object:
+          val point = new js.Object:
+            val pointStyle = false
+        val plugins = new js.Object:
+          val annotation = new js.Object:
+            val annotations = js.Array(
+              new js.Object:
+                val `type` = "line"
+                val xMin = "11.10"
+                val xMax = "11.10"
+                val borderDash = js.Array(5, 5)
+                val borderWidth = 1
+                val label = new js.Object:
+                  val display = true
+                  val position = "end"
+                  val content = "11.11ms (90Hz)"
+                  val backgroundColor = "rgba(0,0,0,0.5)"
+              ,
+              new js.Object:
+                val `type` = "line"
+                val xMin = "8.30"
+                val xMax = "8.30"
+                val borderDash = js.Array(5, 5)
+                val borderWidth = 1
+                val label = new js.Object:
+                  val display = true
+                  val position = "end"
+                  val content = "8.33ms (120Hz)"
+                  val backgroundColor = "rgba(0,0,0,0.5)"
+            )
+      .asInstanceOf[ChartOptions[T]]
+
+    ChartConfiguration[chartJsStrings.line, ChartDataType, ChartLabelType](
+      `type` = chartJsStrings.line,
+      data = ChartData(
         datasets = js.Array(
-          new ChartDataSets:
-            label = "appCPU"
-            hidden = true
-            borderWidth = 1
-            borderColor = "green"
-            backgroundColor = "green"
-            fill = false
-          ,
-          new ChartDataSets:
-            label = "renderCPU"
-            borderWidth = 1
-            borderColor = "pink"
-            backgroundColor = "pink"
-            fill = false
-          ,
-          new ChartDataSets:
-            label = "appGPU"
-            borderWidth = 1
-            borderColor = "blue"
-            backgroundColor = "blue"
-            fill = false
+          dataset("appCPU", "green", datasetHidden = true),
+          dataset("renderCPU", "pink"),
+          dataset("appGPU", "blue")
         )
-      options = new ChartOptions:
-        scales = new ChartScales:
-          yAxes = js.Array(
-            new CommonAxe:
-              scaleLabel = new ScaleTitleOptions:
-                display = true
-                labelString = "Percentage of all measurements"
-              ticks = new TickOptions:
-                beginAtZero = true
-          )
-          xAxes = js.Array(
-            new ChartXAxe:
-              scaleLabel = new ScaleTitleOptions:
-                display = true
-                labelString = "Frametime in milliseconds"
-              ticks = new TickOptions:
-                maxTicksLimit = MaxFrametimeMicros / 1000.0
-          )
+      )
+    ).setOptions(options())
 
   def renderDataChart(): Element =
     import scala.scalajs.js.JSConverters.*
     import typings.chartJs.mod.*
+    import typings.chartJs.*
 
-    var optChart: Option[Chart] = None
+    var optChart: Option[Chart[chartJsStrings.line, ChartDataType, ChartLabelType]] = None
 
     def toChartPoint(d: DataItem) =
-      val cp = ChartPoint()
-      cp.x = d.bucket.setScale(2, RoundingMode.DOWN).toString
-      cp.y = d.percent.setScale(2, RoundingMode.DOWN).toString
-      cp
+      new js.Object:
+        val x = d.bucket.setScale(2, RoundingMode.DOWN).toString
+        val y = d.percent.setScale(2, RoundingMode.DOWN).toString
 
     canvasTag(
       // Regular properties of the canvas
@@ -174,7 +215,7 @@ object App:
         // on mount, create the `Chart` instance and store it in optChart
         mount = nodeCtx =>
           val domCanvas: dom.HTMLCanvasElement = nodeCtx.thisNode.ref
-          val chart = Chart.apply.newInstance2(domCanvas, chartConfig)
+          val chart = Chart[chartJsStrings.line, ChartDataType, ChartLabelType](domCanvas, chartConfig)
           optChart = Some(chart)
         ,
         // on unmount, destroy the `Chart` instance
@@ -186,11 +227,16 @@ object App:
       // Bridge the FRP world of dataSignal to the imperative world of the `chart.data`
       dataSignal --> { data =>
         for chart <- optChart do
-          chart.data.labels = (0 to MaxFrametimeMicros by BucketSizeMicros).map(_ / 1000.0).toJSArray
+          chart.data.labels = (0 to MaxFrametimeMicros by BucketSizeMicros)
+            .map(BigDecimal(_))
+            .map(_ / 1000.0)
+            .map(_.setScale(2, RoundingMode.DOWN))
+            .map(_.toString)
+            .toJSArray
 
-          chart.data.datasets.get(0).data = data.filter(_.kind == DataItemKind.AppCpu).map(toChartPoint).toJSArray
-          chart.data.datasets.get(1).data = data.filter(_.kind == DataItemKind.RenderCpu).map(toChartPoint).toJSArray
-          chart.data.datasets.get(2).data = data.filter(_.kind == DataItemKind.AppGpu).map(toChartPoint).toJSArray
+          chart.data.datasets(0).data = data.filter(_.kind == DataItemKind.AppCpu).map(toChartPoint).toJSArray
+          chart.data.datasets(1).data = data.filter(_.kind == DataItemKind.RenderCpu).map(toChartPoint).toJSArray
+          chart.data.datasets(2).data = data.filter(_.kind == DataItemKind.AppGpu).map(toChartPoint).toJSArray
           chart.update()
       }
     )
