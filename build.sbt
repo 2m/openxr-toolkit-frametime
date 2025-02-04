@@ -36,7 +36,7 @@ lazy val frontend = project
     /* Configure Scala.js to emit modules in the optimal way to
      * connect to Vite's incremental reload.
      * - emit ECMAScript modules
-     * - emit as many small modules as possible for classes in the "rallyeye" package
+     * - emit as many small modules as possible for classes in the "oxrt.frametimes" package
      * - emit as few (large) modules as possible for all other classes
      *   (in particular, for the standard library)
      */
@@ -44,7 +44,7 @@ lazy val frontend = project
       import org.scalajs.linker.interface.ModuleSplitStyle
       _.withModuleKind(ModuleKind.ESModule)
         .withModuleSplitStyle(
-          ModuleSplitStyle.SmallModulesFor(List("rallyeye"))
+          ModuleSplitStyle.SmallModulesFor(List("oxrt.frametimes"))
         )
     },
     publicDev := linkerOutputDirectory((Compile / fastLinkJS).value, target.value),
