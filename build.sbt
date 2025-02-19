@@ -26,9 +26,10 @@ lazy val frontend = project
   .in(file("modules/frontend"))
   .settings(
     libraryDependencies ++= Seq(
-      "org.scala-js" %%% "scalajs-dom"                 % "2.8.0",
-      "org.scala-js" %%% "scala-js-macrotask-executor" % "1.1.1",
-      "com.raquo"    %%% "laminar"                     % "17.2.0"
+      "org.scala-js"  %%% "scalajs-dom"                 % "2.8.0",
+      "org.scala-js"  %%% "scala-js-macrotask-executor" % "1.1.1",
+      "com.raquo"     %%% "laminar"                     % "17.2.0",
+      "org.scalameta" %%% "munit"                       % "1.0.4" % Test
     ),
     // Tell Scala.js that this is an application with a main method
     scalaJSUseMainModuleInitializer := true,

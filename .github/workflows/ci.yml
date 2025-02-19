@@ -41,3 +41,5 @@ jobs:
     - run: sbt --client headerCheckAll
     - run: sbt --client frontend/publicDev
     - run: sbt --client frontend/publicProd
+
+    - run: just build-js
