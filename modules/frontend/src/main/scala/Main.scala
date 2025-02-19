@@ -19,7 +19,6 @@ package oxrt.frametimes
 import scala.annotation.tailrec
 import scala.math.BigDecimal.RoundingMode
 import scala.scalajs.js
-import scala.util.Try
 
 import com.raquo.laminar.api.*
 import com.raquo.laminar.api.L.*
@@ -61,25 +60,11 @@ object App:
     val reader = new FileReader()
     reader.onload = e =>
       val contents = e.target.asInstanceOf[FileReader].result.asInstanceOf[String]
-      val data = contents
-        .split("\n")
-        .drop(1)
-        .flatMap: dataLine =>
-          val Array(_, _, appCPU, renderCPU, appGPU, _, _) = dataLine.split(",")
+      val data = parseCsv(contents)
 
-          val appCpuMicros = Try(Some(appCPU.toInt)).getOrElse(None)
-          val renderCpuMicros = Try(Some(renderCPU.toInt)).getOrElse(None)
-          val appGpuMicros = Try(Some(appGPU.toInt)).getOrElse(None)
-
-          for
-            a <- appCpuMicros
-            c <- renderCpuMicros
-            g <- appGpuMicros
-          yield Some((a, c, g))
-
-      chartHistogram(data.flatten.map(_._1), DataItemKind.AppCpu)
-      chartHistogram(data.flatten.map(_._2), DataItemKind.RenderCpu)
-      chartHistogram(data.flatten.map(_._3), DataItemKind.AppGpu)
+      chartHistogram(data.map(_.appCpu), DataItemKind.AppCpu)
+      chartHistogram(data.map(_.renderCpu), DataItemKind.RenderCpu)
+      chartHistogram(data.map(_.appGpu), DataItemKind.AppGpu)
 
     reader.readAsText(file)
 
