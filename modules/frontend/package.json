@@ -16,7 +16,7 @@
     "vite": "^6.3.5"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.1.6",
+    "@tailwindcss/postcss": "^4.1.7",
     "chart.js": "4.4.9",
     "chartjs-plugin-annotation": "^3.1.0"
   }
